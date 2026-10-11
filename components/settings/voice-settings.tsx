@@ -12,11 +12,12 @@ import { Alert } from "@/components/ui/feedback";
 
 const SUPPORTED_VOICE_PROVIDERS = new Set(["Minimax", "OpenAI"]);
 const MINIMAX_BASE_URL_OPTIONS = [
-    { id: "cn", label: "国内版", baseUrl: "https://api.minimaxi.com/v1" },
+    { id: "cn", label: "国内版", baseUrl: "https://api.minimax.chat/v1" },
     { id: "global", label: "海外版", baseUrl: "https://api.minimax.io/v1" },
 ];
 const DEFAULT_MINIMAX_BASE_URL = MINIMAX_BASE_URL_OPTIONS[0].baseUrl;
 const GLOBAL_MINIMAX_BASE_URL = MINIMAX_BASE_URL_OPTIONS[1].baseUrl;
+const CUSTOM_MINIMAX_DEFAULT_BASE_URL = "https://api.minimaxi.com/v1";
 const MINIMAX_SPEED_MIN = 0.5;
 const MINIMAX_SPEED_MAX = 2.0;
 const MINIMAX_SPEED_STEP = 0.1;
@@ -319,11 +320,14 @@ export function VoiceSettings() {
             return;
         }
         const wasMinimax = current?.provider === "Minimax";
-        const nextBaseUrl = providerOption === "MinimaxGlobal"
-            ? GLOBAL_MINIMAX_BASE_URL
-            : providerOption === "MinimaxCustom"
-                ? (current?.baseUrl && current.baseUrl !== GLOBAL_MINIMAX_BASE_URL ? current.baseUrl : "https://api.minimaxi.com/v1")
-                : DEFAULT_MINIMAX_BASE_URL;
+        let nextBaseUrl = DEFAULT_MINIMAX_BASE_URL;
+        if (providerOption === "MinimaxGlobal") {
+            nextBaseUrl = GLOBAL_MINIMAX_BASE_URL;
+        } else if (providerOption === "MinimaxCustom") {
+            nextBaseUrl = (current?.baseUrl && current.baseUrl !== DEFAULT_MINIMAX_BASE_URL && current.baseUrl !== GLOBAL_MINIMAX_BASE_URL)
+                ? current.baseUrl
+                : CUSTOM_MINIMAX_DEFAULT_BASE_URL;
+        }
         updateConfig(id, {
             provider: "Minimax",
             baseUrl: nextBaseUrl,
