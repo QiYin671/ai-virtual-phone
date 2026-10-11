@@ -30,6 +30,7 @@ const VOICE_PROVIDER_OPTIONS = [
     { value: "OpenAI", label: "OpenAI TTS" },
     { value: "MinimaxCN", label: "Minimax 语音国内版" },
     { value: "MinimaxGlobal", label: "Minimax 语音海外版" },
+    { value: "MinimaxCustom", label: "Minimax 自定义 URL (个人订阅等)" },
 ];
 
 const DEFAULT_VOICE_CONFIGS: VoiceApiConfig[] = [
@@ -198,8 +199,8 @@ function normalizeVoiceConfigs(configs: VoiceApiConfig[]): VoiceApiConfig[] {
         .filter(config => SUPPORTED_VOICE_PROVIDERS.has(config.provider))
         .map(config => {
             if (config.provider !== "Minimax") return config;
-            const baseUrl = MINIMAX_BASE_URL_OPTIONS.some(option => option.baseUrl === config.baseUrl)
-                ? config.baseUrl
+            const baseUrl = (typeof config.baseUrl === "string" && config.baseUrl.trim())
+                ? config.baseUrl.trim()
                 : DEFAULT_MINIMAX_BASE_URL;
             const speechSpeed = typeof config.speechSpeed === "number" && Number.isFinite(config.speechSpeed)
                 ? Math.min(MINIMAX_SPEED_MAX, Math.max(MINIMAX_SPEED_MIN, config.speechSpeed))
@@ -222,7 +223,9 @@ function makeCloneVoiceId(config: VoiceApiConfig): string {
 
 function providerSelectValue(config: VoiceApiConfig): string {
     if (config.provider === "OpenAI") return "OpenAI";
-    return config.baseUrl === GLOBAL_MINIMAX_BASE_URL ? "MinimaxGlobal" : "MinimaxCN";
+    if (config.baseUrl === GLOBAL_MINIMAX_BASE_URL) return "MinimaxGlobal";
+    if (config.baseUrl && config.baseUrl !== DEFAULT_MINIMAX_BASE_URL) return "MinimaxCustom";
+    return "MinimaxCN";
 }
 
 export function VoiceSettings() {
@@ -316,9 +319,14 @@ export function VoiceSettings() {
             return;
         }
         const wasMinimax = current?.provider === "Minimax";
+        const nextBaseUrl = providerOption === "MinimaxGlobal"
+            ? GLOBAL_MINIMAX_BASE_URL
+            : providerOption === "MinimaxCustom"
+                ? (current?.baseUrl && current.baseUrl !== GLOBAL_MINIMAX_BASE_URL ? current.baseUrl : "https://api.minimaxi.com/v1")
+                : DEFAULT_MINIMAX_BASE_URL;
         updateConfig(id, {
             provider: "Minimax",
-            baseUrl: providerOption === "MinimaxGlobal" ? GLOBAL_MINIMAX_BASE_URL : DEFAULT_MINIMAX_BASE_URL,
+            baseUrl: nextBaseUrl,
             model: wasMinimax ? (current?.model || "speech-2.8-turbo") : "speech-2.8-turbo",
             defaultVoice: wasMinimax ? (current?.defaultVoice || "male-qn-qingse") : "male-qn-qingse",
             speechSpeed: wasMinimax ? (current?.speechSpeed ?? DEFAULT_SPEECH_SPEED) : DEFAULT_SPEECH_SPEED,
@@ -667,6 +675,19 @@ export function VoiceSettings() {
                                                 ))}
                                             </select>
                                         </div>
+
+                                        {providerSelectValue(config) === "MinimaxCustom" && (
+                                            <div className="flex flex-col gap-1">
+                                                <label className="menu-desc ml-1">接口地址 (Base URL)</label>
+                                                <Input
+                                                    type="text"
+                                                    value={config.baseUrl || ""}
+                                                    onChange={(e) => updateConfig(config.id, { baseUrl: e.target.value })}
+                                                    placeholder="https://api.minimaxi.com/v1"
+                                                />
+                                                <span className="menu-desc ml-1">支持自定义或个人订阅/工作台地址（例如 https://api.minimaxi.com/v1）</span>
+                                            </div>
+                                        )}
 
                                         <div className="flex flex-col gap-1">
                                             <label className="menu-desc ml-1">API Key</label>
